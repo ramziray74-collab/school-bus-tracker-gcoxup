@@ -13,119 +13,196 @@ interface StudentListItemProps {
 
 export default function StudentListItem({ student, onToggle }: StudentListItemProps) {
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onToggle(student.id);
   };
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
-      ]}
-      onPress={handlePress}
-    >
-      <View style={styles.leftContent}>
-        <View style={[
-          styles.checkbox,
-          student.onBus && styles.checkboxChecked
-        ]}>
+    <View style={styles.container}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.checkboxContainer,
+          pressed && styles.checkboxPressed,
+        ]}
+        onPress={handlePress}
+      >
+        <View
+          style={[
+            styles.checkbox,
+            student.onBus && styles.checkboxChecked,
+          ]}
+        >
           {student.onBus && (
-            <IconSymbol name="checkmark" size={16} color={colors.card} />
+            <IconSymbol name="checkmark" size={18} color={colors.card} />
           )}
         </View>
-        <View style={styles.studentInfo}>
-          <Text style={styles.studentName}>{student.name}</Text>
-          <Text style={styles.studentGrade}>{student.grade}</Text>
-          <View style={styles.locationRow}>
-            <IconSymbol name="location.fill" size={12} color={colors.textSecondary} />
-            <Text style={styles.locationText} numberOfLines={1}>
-              {student.pickupLocation}
-            </Text>
+      </Pressable>
+
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.name}>{student.name}</Text>
+          {student.payment.isOverdue && (
+            <View style={styles.overdueBadge}>
+              <IconSymbol name="exclamationmark.circle.fill" size={14} color={colors.card} />
+              <Text style={styles.overdueBadgeText}>Overdue</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.infoRow}>
+          <IconSymbol name="person.fill" size={12} color={colors.textSecondary} />
+          <Text style={styles.infoText}>{student.age} years • {student.grade}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <IconSymbol name="house.fill" size={12} color={colors.textSecondary} />
+          <Text style={styles.infoText}>{student.address}</Text>
+        </View>
+        <View style={styles.paymentRow}>
+          <View style={styles.paymentInfo}>
+            <IconSymbol name="dollarsign.circle.fill" size={14} color={colors.primary} />
+            <Text style={styles.paymentText}>${student.payment.monthlyAmount}/month</Text>
           </View>
+          {student.payment.isPaid ? (
+            <View style={[styles.paymentStatusBadge, { backgroundColor: colors.success }]}>
+              <IconSymbol name="checkmark.circle.fill" size={12} color={colors.card} />
+              <Text style={styles.paymentStatusText}>Paid</Text>
+            </View>
+          ) : (
+            <View style={[styles.paymentStatusBadge, { backgroundColor: colors.error }]}>
+              <IconSymbol name="xmark.circle.fill" size={12} color={colors.card} />
+              <Text style={styles.paymentStatusText}>Unpaid</Text>
+            </View>
+          )}
         </View>
       </View>
-      <View style={[
-        styles.statusBadge,
-        { backgroundColor: student.onBus ? colors.success : colors.border }
-      ]}>
-        <Text style={[
-          styles.statusText,
-          { color: student.onBus ? colors.card : colors.textSecondary }
-        ]}>
-          {student.onBus ? 'On Bus' : 'Off Bus'}
-        </Text>
+
+      <View style={styles.statusContainer}>
+        <View
+          style={[
+            styles.statusIndicator,
+            { backgroundColor: student.onBus ? colors.success : colors.textSecondary },
+          ]}
+        />
+        <Text style={styles.statusText}>{student.onBus ? 'On Bus' : 'Off Bus'}</Text>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.08)',
     elevation: 2,
   },
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+  checkboxContainer: {
+    marginRight: 12,
   },
-  leftContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+  checkboxPressed: {
+    opacity: 0.6,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 2,
     borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    backgroundColor: colors.background,
   },
   checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: colors.success,
+    borderColor: colors.success,
   },
-  studentInfo: {
+  content: {
     flex: 1,
   },
-  studentName: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  name: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: 2,
+    flex: 1,
   },
-  studentGrade: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  overdueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  overdueBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.card,
+    marginLeft: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  locationRow: {
+  infoText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  paymentInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  locationText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginLeft: 4,
-    flex: 1,
+  paymentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginLeft: 6,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  paymentStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.card,
+    marginLeft: 4,
+  },
+  statusContainer: {
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  statusIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginBottom: 4,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
 });

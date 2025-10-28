@@ -1,11 +1,37 @@
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Platform,
+  TextInput,
+  Alert,
+} from 'react-native';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
-import { mockBusInfo } from '@/data/mockBusData';
+import { useBus } from '@/contexts/BusContext';
+import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
+  const { busInfo, updateDriverName } = useBus();
+  const [isEditingDriver, setIsEditingDriver] = useState(false);
+  const [driverName, setDriverName] = useState(busInfo.driverName);
+
+  const handleSaveDriverName = () => {
+    if (!driverName.trim()) {
+      Alert.alert('Error', 'Please enter a driver name');
+      return;
+    }
+
+    updateDriverName(driverName.trim());
+    setIsEditingDriver(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Success', 'Driver name updated successfully');
+  };
+
   const settingsOptions = [
     {
       id: 'notifications',
@@ -45,13 +71,16 @@ export default function ProfileScreen() {
     },
   ];
 
+  const overdueCount = busInfo.students.filter(s => s.payment.isOverdue).length;
+  const paidCount = busInfo.students.filter(s => s.payment.isPaid).length;
+
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          Platform.OS !== 'ios' && styles.scrollContentWithTabBar
+          Platform.OS !== 'ios' && styles.scrollContentWithTabBar,
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -60,11 +89,53 @@ export default function ProfileScreen() {
           <View style={styles.avatarContainer}>
             <IconSymbol name="person.circle.fill" size={80} color={colors.primary} />
           </View>
-          <Text style={styles.driverName}>{mockBusInfo.driverName}</Text>
-          <Text style={styles.busNumber}>{mockBusInfo.busNumber}</Text>
+
+          {isEditingDriver ? (
+            <View style={styles.editContainer}>
+              <TextInput
+                style={styles.editInput}
+                value={driverName}
+                onChangeText={setDriverName}
+                placeholder="Enter driver name"
+                placeholderTextColor={colors.textSecondary}
+                autoFocus
+              />
+              <View style={styles.editButtons}>
+                <Pressable
+                  style={[styles.editButton, styles.cancelButton]}
+                  onPress={() => {
+                    setDriverName(busInfo.driverName);
+                    setIsEditingDriver(false);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.editButton, styles.saveButton]}
+                  onPress={handleSaveDriverName}
+                >
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.driverNameContainer}>
+                <Text style={styles.driverName}>{busInfo.driverName}</Text>
+                <Pressable
+                  onPress={() => setIsEditingDriver(true)}
+                  style={styles.editIconButton}
+                >
+                  <IconSymbol name="pencil.circle.fill" size={24} color={colors.primary} />
+                </Pressable>
+              </View>
+            </>
+          )}
+
+          <Text style={styles.busNumber}>{busInfo.busNumber}</Text>
           <View style={styles.routeBadge}>
             <IconSymbol name="bus" size={16} color={colors.card} />
-            <Text style={styles.routeText}>{mockBusInfo.route}</Text>
+            <Text style={styles.routeText}>{busInfo.route}</Text>
           </View>
         </View>
 
@@ -72,20 +143,54 @@ export default function ProfileScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <IconSymbol name="person.3.fill" size={24} color={colors.primary} />
-            <Text style={styles.statValue}>{mockBusInfo.students.length}</Text>
+            <Text style={styles.statValue}>{busInfo.students.length}</Text>
             <Text style={styles.statLabel}>Total Students</Text>
           </View>
           <View style={styles.statCard}>
             <IconSymbol name="checkmark.circle.fill" size={24} color={colors.success} />
-            <Text style={styles.statValue}>{mockBusInfo.capacity}</Text>
-            <Text style={styles.statLabel}>Capacity</Text>
+            <Text style={styles.statValue}>{paidCount}</Text>
+            <Text style={styles.statLabel}>Paid</Text>
+          </View>
+          <View style={styles.statCard}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={24} color={colors.error} />
+            <Text style={styles.statValue}>{overdueCount}</Text>
+            <Text style={styles.statLabel}>Overdue</Text>
+          </View>
+        </View>
+
+        {/* Payment Summary */}
+        <View style={styles.paymentSummary}>
+          <Text style={styles.paymentSummaryTitle}>Payment Summary</Text>
+          <View style={styles.paymentSummaryRow}>
+            <Text style={styles.paymentSummaryLabel}>Total Monthly Revenue:</Text>
+            <Text style={styles.paymentSummaryValue}>
+              ${busInfo.students.reduce((sum, s) => sum + s.payment.monthlyAmount, 0)}
+            </Text>
+          </View>
+          <View style={styles.paymentSummaryRow}>
+            <Text style={styles.paymentSummaryLabel}>Collected:</Text>
+            <Text style={[styles.paymentSummaryValue, { color: colors.success }]}>
+              $
+              {busInfo.students
+                .filter(s => s.payment.isPaid)
+                .reduce((sum, s) => sum + s.payment.monthlyAmount, 0)}
+            </Text>
+          </View>
+          <View style={styles.paymentSummaryRow}>
+            <Text style={styles.paymentSummaryLabel}>Outstanding:</Text>
+            <Text style={[styles.paymentSummaryValue, { color: colors.error }]}>
+              $
+              {busInfo.students
+                .filter(s => !s.payment.isPaid)
+                .reduce((sum, s) => sum + s.payment.monthlyAmount, 0)}
+            </Text>
           </View>
         </View>
 
         {/* Settings Section */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Settings</Text>
-          {settingsOptions.map((option) => (
+          {settingsOptions.map(option => (
             <Pressable
               key={option.id}
               style={({ pressed }) => [
@@ -110,7 +215,7 @@ export default function ProfileScreen() {
         <View style={styles.aboutContainer}>
           <Text style={styles.aboutTitle}>About School Bus Tracker</Text>
           <Text style={styles.aboutText}>
-            This app helps monitor school bus locations and track student attendance in real-time. 
+            This app helps monitor school bus locations and track student attendance in real-time.
             Connect with your fleet tracking device for live GPS updates.
           </Text>
           <View style={styles.versionContainer}>
@@ -145,11 +250,62 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginBottom: 16,
   },
+  driverNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   driverName: {
     fontSize: 24,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 4,
+  },
+  editIconButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  editContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  editInput: {
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 18,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    width: '80%',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  editButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  saveButtonText: {
+    color: colors.card,
+    fontSize: 14,
+    fontWeight: '600',
   },
   busNumber: {
     fontSize: 16,
@@ -195,6 +351,35 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  paymentSummary: {
+    backgroundColor: colors.card,
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.08)',
+    elevation: 2,
+  },
+  paymentSummaryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  paymentSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  paymentSummaryLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  paymentSummaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
   },
   sectionContainer: {
     padding: 16,

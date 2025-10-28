@@ -1,21 +1,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Platform } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors } from '@/styles/commonStyles';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
-import { mockBusInfo } from '@/data/mockBusData';
-import { BusInfo, Student, AttendanceRecord } from '@/types/bus';
-import BusMapPlaceholder from '@/components/BusMapPlaceholder';
+import { useBus } from '@/contexts/BusContext';
+import { AttendanceRecord } from '@/types/bus';
 import BusInfoCard from '@/components/BusInfoCard';
 import StudentListItem from '@/components/StudentListItem';
 import * as Haptics from 'expo-haptics';
 
 export default function HomeScreen() {
-  const [busInfo, setBusInfo] = useState<BusInfo>(mockBusInfo);
+  const router = useRouter();
+  const { busInfo, setBusInfo, unreadCount } = useBus();
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
-  const { location, errorMsg, isTracking, permissionStatus, startTracking, stopTracking } = useLocationTracking();
+  const { location, errorMsg, isTracking, permissionStatus, startTracking, stopTracking } =
+    useLocationTracking();
 
   useEffect(() => {
     // Auto-start tracking when permission is granted
@@ -70,26 +71,55 @@ export default function HomeScreen() {
     }
   };
 
+  const handleOpenMap = () => {
+    if (location) {
+      router.push({
+        pathname: '/(tabs)/(home)/map-view',
+        params: {
+          lat: location.latitude.toString(),
+          lng: location.longitude.toString(),
+        },
+      });
+    } else {
+      Alert.alert('No Location', 'Location data is not available yet.');
+    }
+  };
+
+  const handleStudentPress = (studentId: string) => {
+    router.push({
+      pathname: '/(tabs)/(home)/student-details',
+      params: { id: studentId },
+    });
+  };
+
   const onBusCount = busInfo.students.filter(s => s.onBus).length;
+  const overdueCount = busInfo.students.filter(s => s.payment.isOverdue).length;
 
   const renderHeaderRight = () => (
-    <Pressable
-      onPress={handleToggleTracking}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol 
-        name={isTracking ? "location.fill" : "location"} 
-        color={isTracking ? colors.success : colors.textSecondary} 
-        size={24}
-      />
-    </Pressable>
+    <View style={styles.headerRightContainer}>
+      <Pressable onPress={() => router.push('/(tabs)/(home)/notifications')} style={styles.headerButton}>
+        <IconSymbol name="bell.fill" color={colors.text} size={24} />
+        {unreadCount > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.notificationBadgeText}>{unreadCount}</Text>
+          </View>
+        )}
+      </Pressable>
+      <Pressable onPress={handleToggleTracking} style={styles.headerButton}>
+        <IconSymbol
+          name={isTracking ? 'location.fill' : 'location'}
+          color={isTracking ? colors.success : colors.textSecondary}
+          size={24}
+        />
+      </Pressable>
+    </View>
   );
 
   return (
     <>
       <Stack.Screen
         options={{
-          title: "School Bus Tracker",
+          title: 'School Bus Tracker',
           headerRight: renderHeaderRight,
           headerStyle: {
             backgroundColor: colors.card,
@@ -98,11 +128,11 @@ export default function HomeScreen() {
         }}
       />
       <View style={styles.container}>
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContent,
-            Platform.OS !== 'ios' && styles.scrollContentWithTabBar
+            Platform.OS !== 'ios' && styles.scrollContentWithTabBar,
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -123,8 +153,46 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Map Placeholder */}
-          <BusMapPlaceholder location={location} />
+          {/* Overdue Payments Alert */}
+          {overdueCount > 0 && (
+            <Pressable
+              style={styles.overdueAlert}
+              onPress={() => router.push('/(tabs)/(home)/notifications')}
+            >
+              <IconSymbol name="exclamationmark.triangle.fill" size={24} color={colors.card} />
+              <View style={styles.overdueAlertContent}>
+                <Text style={styles.overdueAlertTitle}>Payment Alert</Text>
+                <Text style={styles.overdueAlertText}>
+                  {overdueCount} student{overdueCount !== 1 ? 's have' : ' has'} overdue payments
+                </Text>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color={colors.card} />
+            </Pressable>
+          )}
+
+          {/* Map Button */}
+          <Pressable
+            style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
+            onPress={handleOpenMap}
+          >
+            <View style={styles.mapButtonContent}>
+              <IconSymbol name="map.fill" size={48} color={colors.primary} />
+              <View style={styles.mapButtonTextContainer}>
+                <Text style={styles.mapButtonTitle}>View on Map</Text>
+                <Text style={styles.mapButtonSubtitle}>
+                  {location
+                    ? 'Tap to open interactive map'
+                    : 'Waiting for location data...'}
+                </Text>
+              </View>
+            </View>
+            {location && (
+              <View style={styles.locationBadge}>
+                <IconSymbol name="location.fill" size={16} color={colors.success} />
+                <Text style={styles.locationBadgeText}>Live</Text>
+              </View>
+            )}
+          </Pressable>
 
           {/* Bus Info Card */}
           <BusInfoCard busInfo={busInfo} onBusCount={onBusCount} />
@@ -141,15 +209,17 @@ export default function HomeScreen() {
             </View>
 
             <Text style={styles.sectionSubtitle}>
-              Tap to check students on/off the bus
+              Tap to check students on/off the bus, or tap name for details
             </Text>
 
             {busInfo.students.map(student => (
-              <StudentListItem
+              <Pressable
                 key={student.id}
-                student={student}
-                onToggle={handleToggleStudent}
-              />
+                onLongPress={() => handleStudentPress(student.id)}
+                style={({ pressed }) => [pressed && styles.studentItemPressed]}
+              >
+                <StudentListItem student={student} onToggle={handleToggleStudent} />
+              </Pressable>
             ))}
           </View>
 
@@ -158,21 +228,35 @@ export default function HomeScreen() {
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
               {attendanceHistory.slice(0, 5).map((record, index) => (
-                <View key={`${record.studentId}-${record.timestamp}`} style={styles.historyItem}>
-                  <View style={[
-                    styles.historyIcon,
-                    { backgroundColor: record.action === 'boarded' ? colors.success : colors.warning }
-                  ]}>
-                    <IconSymbol 
-                      name={record.action === 'boarded' ? "arrow.up.circle.fill" : "arrow.down.circle.fill"} 
-                      size={16} 
-                      color={colors.card} 
+                <View
+                  key={`${record.studentId}-${record.timestamp}`}
+                  style={styles.historyItem}
+                >
+                  <View
+                    style={[
+                      styles.historyIcon,
+                      {
+                        backgroundColor:
+                          record.action === 'boarded' ? colors.success : colors.warning,
+                      },
+                    ]}
+                  >
+                    <IconSymbol
+                      name={
+                        record.action === 'boarded'
+                          ? 'arrow.up.circle.fill'
+                          : 'arrow.down.circle.fill'
+                      }
+                      size={16}
+                      color={colors.card}
                     />
                   </View>
                   <View style={styles.historyContent}>
                     <Text style={styles.historyName}>{record.studentName}</Text>
                     <Text style={styles.historyAction}>
-                      {record.action === 'boarded' ? 'Boarded the bus' : 'Alighted from the bus'}
+                      {record.action === 'boarded'
+                        ? 'Boarded the bus'
+                        : 'Alighted from the bus'}
                     </Text>
                     <Text style={styles.historyTime}>
                       {new Date(record.timestamp).toLocaleTimeString()}
@@ -202,9 +286,32 @@ const styles = StyleSheet.create({
   scrollContentWithTabBar: {
     paddingBottom: 100,
   },
-  headerButtonContainer: {
-    padding: 8,
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: 8,
+  },
+  headerButton: {
+    padding: 8,
+    marginLeft: 8,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: colors.card,
+    fontSize: 11,
+    fontWeight: '700',
   },
   errorContainer: {
     flexDirection: 'row',
@@ -233,6 +340,75 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
     flex: 1,
+  },
+  overdueAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.error,
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.15)',
+    elevation: 4,
+  },
+  overdueAlertContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  overdueAlertTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.card,
+    marginBottom: 2,
+  },
+  overdueAlertText: {
+    fontSize: 14,
+    color: colors.card,
+  },
+  mapButton: {
+    backgroundColor: colors.card,
+    margin: 16,
+    padding: 20,
+    borderRadius: 16,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+    elevation: 4,
+  },
+  mapButtonPressed: {
+    opacity: 0.7,
+  },
+  mapButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mapButtonTextContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  mapButtonTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  mapButtonSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 12,
+  },
+  locationBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.success,
+    marginLeft: 4,
   },
   sectionContainer: {
     padding: 16,
@@ -263,6 +439,9 @@ const styles = StyleSheet.create({
     color: colors.card,
     fontSize: 14,
     fontWeight: '600',
+  },
+  studentItemPressed: {
+    opacity: 0.7,
   },
   historyItem: {
     flexDirection: 'row',
