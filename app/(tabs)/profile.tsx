@@ -1,91 +1,269 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
+
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform } from 'react-native';
+import { IconSymbol } from '@/components/IconSymbol';
+import { colors } from '@/styles/commonStyles';
+import { mockBusInfo } from '@/data/mockBusData';
 
 export default function ProfileScreen() {
-  const theme = useTheme();
+  const settingsOptions = [
+    {
+      id: 'notifications',
+      title: 'Notifications',
+      description: 'Manage alert preferences',
+      icon: 'bell.fill',
+    },
+    {
+      id: 'route',
+      title: 'Route Settings',
+      description: 'Configure bus route details',
+      icon: 'map.fill',
+    },
+    {
+      id: 'students',
+      title: 'Manage Students',
+      description: 'Add or remove students',
+      icon: 'person.3.fill',
+    },
+    {
+      id: 'tracking',
+      title: 'Tracking Device',
+      description: 'Fleet tracking device settings',
+      icon: 'antenna.radiowaves.left.and.right',
+    },
+    {
+      id: 'reports',
+      title: 'Reports',
+      description: 'View attendance reports',
+      icon: 'chart.bar.fill',
+    },
+    {
+      id: 'help',
+      title: 'Help & Support',
+      description: 'Get assistance',
+      icon: 'questionmark.circle.fill',
+    },
+  ];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <ScrollView
-        style={styles.container}
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
         contentContainerStyle={[
-          styles.contentContainer,
-          Platform.OS !== 'ios' && styles.contentContainerWithTabBar
+          styles.scrollContent,
+          Platform.OS !== 'ios' && styles.scrollContentWithTabBar
         ]}
+        showsVerticalScrollIndicator={false}
       >
-        <GlassView style={[
-          styles.profileHeader,
-          Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-        ]} glassEffectStyle="regular">
-          <IconSymbol name="person.circle.fill" size={80} color={theme.colors.primary} />
-          <Text style={[styles.name, { color: theme.colors.text }]}>John Doe</Text>
-          <Text style={[styles.email, { color: theme.dark ? '#98989D' : '#666' }]}>john.doe@example.com</Text>
-        </GlassView>
+        {/* Profile Header */}
+        <View style={styles.header}>
+          <View style={styles.avatarContainer}>
+            <IconSymbol name="person.circle.fill" size={80} color={colors.primary} />
+          </View>
+          <Text style={styles.driverName}>{mockBusInfo.driverName}</Text>
+          <Text style={styles.busNumber}>{mockBusInfo.busNumber}</Text>
+          <View style={styles.routeBadge}>
+            <IconSymbol name="bus" size={16} color={colors.card} />
+            <Text style={styles.routeText}>{mockBusInfo.route}</Text>
+          </View>
+        </View>
 
-        <GlassView style={[
-          styles.section,
-          Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-        ]} glassEffectStyle="regular">
-          <View style={styles.infoRow}>
-            <IconSymbol name="phone.fill" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>+1 (555) 123-4567</Text>
+        {/* Stats Cards */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <IconSymbol name="person.3.fill" size={24} color={colors.primary} />
+            <Text style={styles.statValue}>{mockBusInfo.students.length}</Text>
+            <Text style={styles.statLabel}>Total Students</Text>
           </View>
-          <View style={styles.infoRow}>
-            <IconSymbol name="location.fill" size={20} color={theme.dark ? '#98989D' : '#666'} />
-            <Text style={[styles.infoText, { color: theme.colors.text }]}>San Francisco, CA</Text>
+          <View style={styles.statCard}>
+            <IconSymbol name="checkmark.circle.fill" size={24} color={colors.success} />
+            <Text style={styles.statValue}>{mockBusInfo.capacity}</Text>
+            <Text style={styles.statLabel}>Capacity</Text>
           </View>
-        </GlassView>
+        </View>
+
+        {/* Settings Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          {settingsOptions.map((option) => (
+            <Pressable
+              key={option.id}
+              style={({ pressed }) => [
+                styles.settingItem,
+                pressed && styles.settingItemPressed,
+              ]}
+              onPress={() => console.log(`Pressed: ${option.id}`)}
+            >
+              <View style={styles.settingIconContainer}>
+                <IconSymbol name={option.icon as any} size={24} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>{option.title}</Text>
+                <Text style={styles.settingDescription}>{option.description}</Text>
+              </View>
+              <IconSymbol name="chevron.right" size={20} color={colors.textSecondary} />
+            </Pressable>
+          ))}
+        </View>
+
+        {/* About Section */}
+        <View style={styles.aboutContainer}>
+          <Text style={styles.aboutTitle}>About School Bus Tracker</Text>
+          <Text style={styles.aboutText}>
+            This app helps monitor school bus locations and track student attendance in real-time. 
+            Connect with your fleet tracking device for live GPS updates.
+          </Text>
+          <View style={styles.versionContainer}>
+            <Text style={styles.versionText}>Version 1.0.0</Text>
+          </View>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    // backgroundColor handled dynamically
-  },
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  contentContainer: {
-    padding: 20,
+  scrollView: {
+    flex: 1,
   },
-  contentContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
+  scrollContent: {
+    paddingBottom: 20,
   },
-  profileHeader: {
+  scrollContentWithTabBar: {
+    paddingBottom: 100,
+  },
+  header: {
     alignItems: 'center',
-    borderRadius: 12,
-    padding: 32,
+    padding: 24,
+    backgroundColor: colors.card,
+    marginBottom: 16,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  driverName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+  busNumber: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  routeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  routeText: {
+    color: colors.card,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
     marginBottom: 16,
     gap: 12,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    // color handled dynamically
-  },
-  email: {
-    fontSize: 16,
-    // color handled dynamically
-  },
-  section: {
+  statCard: {
+    flex: 1,
+    backgroundColor: colors.card,
+    padding: 16,
     borderRadius: 12,
-    padding: 20,
-    gap: 12,
+    alignItems: 'center',
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.08)',
+    elevation: 2,
   },
-  infoRow: {
+  statValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  sectionContainer: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    backgroundColor: colors.card,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.08)',
+    elevation: 2,
   },
-  infoText: {
+  settingItemPressed: {
+    opacity: 0.7,
+  },
+  settingIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
     fontSize: 16,
-    // color handled dynamically
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  settingDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  aboutContainer: {
+    padding: 16,
+    marginTop: 8,
+  },
+  aboutTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  versionContainer: {
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  versionText: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });
